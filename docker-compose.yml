@@ -1,0 +1,60 @@
+---
+services:
+  umami:
+    image: ghcr.io/umami-software/umami:latest
+    container_name: dq_umami
+    expose:
+      - "3000"
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+    init: true
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl http://dq_umami:3000/api/heartbeat"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+        compress: "true"
+    networks:
+      - default
+      - dq_umami_nw
+  db:
+    image: postgres:15-alpine
+    container_name: dq_umami_db
+    env_file:
+      - .env
+    volumes:
+      - umami-db-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+        compress: "true"
+    networks:
+      - dq_umami_nw
+
+
+volumes:
+  umami-db-data:
+
+networks:
+  default:
+    name: dequa_nw
+    external: true
+  dq_umami_nw:
+    internal: true
